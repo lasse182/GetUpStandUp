@@ -1,105 +1,230 @@
-# Data
-items = [
-	{ value: "1", active: true, color: "#1774FF" }, 
-	{ value: "2", active: false, color: "#FF4858"}, 
-	{ value: "3", active: false, color: "#FFBA00" }, 
-	{ value: "4", active: false, color: "#00D800" },
-	{ value: "5", active: false, color: "#1774FF" }
-]
 
-# Canvas setup
-Screen.backgroundColor = "white"
+background = new BackgroundLayer
+    backgroundColor: "#ffffff"
 
-# Methods
-makeCircle = (width, height, backgroundColor) ->
-	return new Layer
-		width: width
-		height: height
-		borderRadius: width/2
-		backgroundColor: item.color
-
-circles = [  ]
-
-for item, i in items
-	if i == 0
-		circle = makeCircle(200, 200, item.color)
-		circle.centerX()
-		circle.centerY()
-		
-		circleCenterX = circle.x
-		circleCenterY = circle.y
-		
-		circle.draggable = true
-		circle.draggable.vertical = true
-		circle.draggable.momentum = true
-
-		circle.draggable.constraints =
-			x: circleCenterX
-			y: circleCenterY
-
-		circle.draggable.bounce = true
-
-	else if i == 1
-		circle2 = makeCircle(70, 70, item.color)
-		
-		circle2.centerX(70)
-		circle2.centerY(90)
-		
-		circle2CenterX = circle2.x
-		circle2CenterY = circle2.y
-	
-	else if i == 2
-		circle3 = makeCircle(40, 40, item.color)
-		
-		circle3.centerX(30)
-		circle3.centerY(150)
-		
-		circle3CenterX = circle3.x
-		circle3CenterY = circle3.y
-	
-	else if i == 3
-		circle4 = makeCircle(40, 40, item.color)
-		circle4.opacity = 0
-			
-		circle4.centerX(0)
-		circle4.centerY(200)
-		
-		circle4CenterX = circle4.x
-		circle4CenterY = circle4.y
-		
-circle.on Events.DragEnd, ->
-	circle.animate
-		opacity: 0
-		scale: 0
-		x: -200
-		y: 600
-		options:
-			time: 0.5
-	
-	circle2.animate
+circles = [
+	{
+		name: "first"
+		value: "1"
+		x: 0
+		y: 0
 		width: 200
 		height: 200
 		borderRadius: 100
-		x: circleCenterX
-		y: circleCenterY
-		options:
-			time: 0.5
-	
-	circle3.animate
+		backgroundColor: "#1774FF"
+		opacity: 1
+		active: true
+	},
+	{
+		name: "second"
+		value: "2"
+		x: 120
+		y: 180
 		width: 70
 		height: 70
 		borderRadius: 35
-		x: circle2CenterX
-		y: circle2CenterY
-		options:
-			time: 0.5
-
-	circle4.animate
+		backgroundColor: "#FF4858"
 		opacity: 1
-		x: circle3CenterX
-		y: circle3CenterY
-		options:
-			delay: .2
-			time: 1
-			curve: Spring(damping: 0.5)
+		active: false
+	},
+	{
+		name: "third"
+		value: "3"
+		x: 100
+		y: 250
+		width: 40
+		height: 40
+		borderRadius: 20
+		backgroundColor: "#FFBA00"
+		opacity: 1
+		active: false
+	},
+	{
+		name: "fourth"
+		value: "4"
+		x: -200
+		y: 600
+		width: 40
+		height: 40
+		borderRadius: 20
+		backgroundColor: "#00D800"
+		opacity: 0
+		active: false
+	}
+]
 
+## FUNCTIONS ##
+
+setDragable = (circle) =>
+	circle.draggable = true
+	circle.draggable.vertical = true
+	circle.draggable.momentum = true
+	circle.draggable.bounce = true
+
+setUndragable = (circle) =>
+	circle.draggable = false
+	circle.draggable.vertical = false
+	circle.draggable.momentum = false
+	circle.draggable.bounce = false
+
+resetCircles = () =>
+	for circle, i in circles
+		circleLayer = circleLayers[i]
+		setUndragable(circleLayer)
+		circleLayer.off(Events.DragEnd)
+
+attachDragEvent = (index) =>
+	direction = null
+	circleLayers[index].onDrag (event, layer) =>
+		direction = layer.draggable.direction
+	
+	circleLayers[index].onDragEnd (event, layer) =>
+		if direction == "up" || direction == "left"
+			for circle in circleLayers
+				textLayer = circle.childrenWithName("text")
+				textLayer[0].center()
+				
+			setNextActive(circles)
+			setDragableCircle()
+			nextState()
+		else
+			setPreviousActive(circles)
+			setDragableCircle()
+			previousState()	
+
+changeActiveCircle = () =>
+	for circle, i in circles
+		if circle.active
+			attachDragEvent(i)
+			setDragable(circleLayers[i])
+
+setDragableCircle = () =>
+	resetCircles()
+	changeActiveCircle()
+	
+setNextActive = (array) =>
+	# Get the index of last element in array
+	lastIndex = array.length-1
+	
+	for item, i in array
+		
+		# if item is active and not last element in array, set current item to inactive and next item to active
+		if item.active and i < lastIndex
+			nextItem = i+1
+			item.active = false
+			array[i+1].active = true
+			return nextItem
+		
+		# if item is active and is the last element, set current item to false and first element to active
+		else if item.active && i == lastIndex
+			nextItem = 0
+			item.active = false
+			array[0].active = true
+			return nextItem
+
+setPreviousActive = (array) =>
+	# Get the index of last element in array
+	firstIndex = 0
+	lastIndex = array.length-1
+	
+	for item, i in array
+		
+		# if item is active and not last element in array, set current item to inactive and next item to active
+		if item.active && i > firstIndex
+			previousItem = i-1
+			item.active = false
+			array[previousItem].active = true
+			return previousItem
+		
+		# if item is active and is the last element, set current item to false and first element to active
+		else if item.active && i == firstIndex
+			previousItem = lastIndex
+			item.active = false
+			array[lastIndex].active = true
+			return previousItem
+
+nextState = () =>
+	for circle, i in circleLayers
+		if circle.states.previous.name == "default"
+			if i == 0
+				circle.stateCycle("fourth")
+			if i == 1
+				circle.stateCycle("first")
+			if i == 2
+				circle.stateCycle("second")
+			if i == 3
+				circle.stateCycle("third")
+		else
+			if circle.states.current.name == "first"
+				circle.stateCycle("fourth")
+			else if circle.states.current.name == "second"
+				circle.stateCycle("first")
+			else if circle.states.current.name == "third"
+				circle.stateCycle("second")
+			else if circle.states.current.name == "fourth"
+				circle.stateCycle("third")
+		
+previousState = () =>
+	for circle in circleLayers
+		circle.stateCycle()	
+	
+omitKey = (array, value) =>
+	states = []
+	
+	for item in array
+		state = _.omit(item, value)
+		states.push(state)
+	
+	return states
+
+## CODE ##
+
+circleLayers = []
+states = omitKey(circles, "backgroundColor")
+
+circleContainer = new Layer
+	backgroundColor: "#ffffff"
+	width: 200
+	height: 290
+	x: Align.center
+	y: Align.center
+
+for circle, i in circles
+	circle = new Layer
+		parent: circleContainer
+		name: circle.name
+		x: circle.x
+		y: circle.y
+		width: circle.width
+		height: circle.height
+		borderRadius: circle.borderRadius
+		backgroundColor: circle.backgroundColor
+		opacity: circle.opacity
+	
+	text = new TextLayer
+		name: "text"
+		text: circle.name
+		parent: circle
+		color: "#ffffff"
+		fontSize: 14
+	
+	delete circle.states.default
+	circle.states =
+		first: states[0]
+		second: states[1]
+		third: states[2]
+		fourth: states[3]
+	
+	if (i == 0)
+		circle.stateSwitch(states[0].name)
+	else if (i == 1)
+		circle.stateSwitch(states[1].name)
+	else if (i == 2)
+		circle.stateSwitch(states[2].name)
+	else if (i == 3)
+		circle.stateSwitch(states[3].name)
+	
+	circleLayers.push(circle)
+
+## Set first circle dragable		
+setDragableCircle()
